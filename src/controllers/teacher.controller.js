@@ -1,5 +1,9 @@
 import Joi from 'joi'
-import { createTeacher, indexTeacherByName } from '../models/teacher.model.js'
+import {
+  createTeacher,
+  indexTeacherByName,
+  showTeacherById,
+} from '../models/teacher.model.js'
 
 const teacherSchema = Joi.object({
   name: Joi.string().min(3).required(),
@@ -15,6 +19,21 @@ export const index = async (req, res) => {
 
   try {
     const response = await indexTeacherByName(q)
+    res.status(200).json({ response: response })
+  } catch (error) {
+    res.status(500).json({ error: error })
+  }
+}
+
+export const show = async (req, res) => {
+  const { id } = req.params
+
+  if (!id) {
+    return res.status(400).json({ error: 'Falta el parámetro "id"' })
+  }
+
+  try {
+    const response = await showTeacherById(id)
     res.status(200).json({ response: response })
   } catch (error) {
     res.status(500).json({ error: error })

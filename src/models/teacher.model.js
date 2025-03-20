@@ -5,6 +5,7 @@ export const indexTeacherByName = async (q) => {
     sql: `
       SELECT 
         teachers.id, 
+        teachers.rating,
         teachers.name AS teacher_name, 
         universities.name AS university_name 
       FROM teachers
@@ -17,17 +18,74 @@ export const indexTeacherByName = async (q) => {
   const teachers = {}
 
   result.rows.forEach((row) => {
-    if (!teachers[row.teacher_id]) {
-      teachers[row.teacher_id] = {
-        teacher_id: row.teacher_id,
+    if (!teachers[row.id]) {
+      teachers[row.id] = {
+        id: row.id,
+        rating: row.rating,
         teacher_name: row.teacher_name,
         universities: [],
       }
     }
-    teachers[row.teacher_id].universities.push(row.university_name)
+    teachers[row.id].universities.push(row.university_name)
   })
 
   return Object.values(teachers)
+}
+
+export const showTeacherById = async (id) => {
+  const result = await turso.execute({
+    sql: `
+      SELECT
+        t.id,
+        t.rating,
+        t.name AS teacher_name,
+        u.name AS university_name,
+        s.name AS subject_name,
+        f.feedback
+      FROM
+        teachers t
+      LEFT JOIN
+        teacherUniversities tu ON t.id = tu.teacher_id
+      LEFT JOIN
+        universities u ON tu.university_id = u.id
+      LEFT JOIN
+        teacherSubjects ts ON t.id = ts.teacher_id
+      LEFT JOIN
+        subjects s ON ts.subject_id = s.id
+      LEFT JOIN
+        feedbacks f ON t.id = f.teacher_id
+      WHERE
+        t.id = ?
+      `,
+    args: [id],
+  })
+
+  const teachersMap = new Map()
+
+  result.rows.forEach((row) => {
+    if (!teachersMap.has(row.id)) {
+      teachersMap.set(row.id, {
+        id: row.id,
+        rating: row.rating,
+        subjects: new Set(),
+        feedbacks: new Set(),
+        universities: new Set(),
+        teacher_name: row.teacher_name,
+      })
+    }
+
+    const teacher = teachersMap.get(row.id)
+    if (row.feedback) teacher.feedbacks.add(row.feedback)
+    if (row.subject_name) teacher.subjects.add(row.subject_name)
+    if (row.university_name) teacher.universities.add(row.university_name)
+  })
+
+  return Array.from(teachersMap.values()).map((teacher) => ({
+    ...teacher,
+    subjects: Array.from(teacher.subjects),
+    feedbacks: Array.from(teacher.feedbacks),
+    universities: Array.from(teacher.universities),
+  }))
 }
 
 export const createTeacher = async (name) => {
