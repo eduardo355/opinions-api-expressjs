@@ -13,13 +13,14 @@ import teacherSubjectRoutes from './src/routes/teacher.subject.routes.js'
 import teacherUnivesityRoutes from './src/routes/teacher.university.routes.js'
 
 dotenv.config()
+
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 30,
   message: { error: 'Demasiadas solicitudes, intenta mas tarde.' },
 })
 const app = express()
-
+app.set('trust proxy', 1)
 app.use(cors())
 app.use(limiter)
 app.use(helmet())
