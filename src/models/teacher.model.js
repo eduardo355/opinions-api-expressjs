@@ -4,32 +4,43 @@ export const indexTeacherByName = async (q) => {
   const result = await turso.execute({
     sql: `
       SELECT 
-        teachers.id, 
-        teachers.rating,
-        teachers.name AS teacher_name, 
-        universities.name AS university_name 
-      FROM teachers
-      LEFT JOIN teacherUniversities ON teachers.id = teacherUniversities.teacher_id
-      LEFT JOIN universities ON teacherUniversities.university_id = universities.id
-      WHERE teachers.name LIKE ?`,
+        t.id, 
+        t.rating,
+        t.name AS teacher_name, 
+        u.name AS university_name,
+        COUNT(f.feedback) AS feedback_count
+      FROM teachers t
+      LEFT JOIN teacherUniversities tu ON t.id = tu.teacher_id
+      LEFT JOIN universities u ON tu.university_id = u.id
+      LEFT JOIN feedbacks f ON t.id = f.teacher_id
+      WHERE t.name LIKE ?
+      GROUP BY t.id, t.rating, t.name
+    `,
     args: [`%${q}%`],
   })
 
-  const teachers = {}
+  const teachersMap = new Map()
 
   result.rows.forEach((row) => {
-    if (!teachers[row.id]) {
-      teachers[row.id] = {
+    if (!teachersMap.has(row.id)) {
+      teachersMap.set(row.id, {
         id: row.id,
         rating: row.rating,
         teacher_name: row.teacher_name,
-        universities: [],
-      }
+        universities: new Set(),
+        feedback_count: 0,
+      })
     }
-    teachers[row.id].universities.push(row.university_name)
+
+    const teacher = teachersMap.get(row.id)
+    teacher.feedback_count = row.feedback_count
+    if (row.university_name) teacher.universities.add(row.university_name)
   })
 
-  return Object.values(teachers)
+  return Array.from(teachersMap.values()).map((teacher) => ({
+    ...teacher,
+    universities: Array.from(teacher.universities),
+  }))
 }
 
 export const showTeacherById = async (id) => {
