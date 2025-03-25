@@ -2,6 +2,7 @@ import Joi from 'joi'
 import {
   createTeacher,
   indexTeacherByName,
+  indexTeacherByUniversity,
   showTeacherById,
 } from '../models/teacher.model.js'
 
@@ -28,15 +29,33 @@ export const index = async (req, res) => {
 export const show = async (req, res) => {
   const { id } = req.params
 
-  if (!id) {
-    return res.status(400).json({ error: 'Falta el parámetro "id"' })
-  }
+  if (!id) return res.status(400).json({ error: 'Falta el parámetro "id"' })
 
   try {
     const response = await showTeacherById(id)
     res.status(200).json({ response: response })
   } catch (error) {
     res.status(500).json({ error: error })
+  }
+}
+
+export const indexByUniversity = async (req, res) => {
+  const { id } = req.params
+  if (!id)
+    return res
+      .status(400)
+      .json({ error: 'Falta el parametro "id" de la universidad' })
+
+  console.log('aaaaa', id)
+
+  try {
+    const response = await indexTeacherByUniversity(+id)
+    res.status(200).json({ response: response })
+  } catch (error) {
+    console.error('Error in indexByUniversity:', error)
+    res
+      .status(500)
+      .json({ error: error.message || 'Error interno del servidor' })
   }
 }
 
