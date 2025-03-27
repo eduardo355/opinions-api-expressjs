@@ -92,54 +92,38 @@ export const showTeacherById = async (id) => {
     sql: `
       SELECT
         t.id,
-        t.rating,
         t.name AS teacher_name,
-        u.name AS university_name,
-        s.name AS subject_name,
-        f.feedback
+        GROUP_CONCAT(DISTINCT u.name) AS universities,
+        GROUP_CONCAT(DISTINCT s.name) AS subjects,
+        GROUP_CONCAT(DISTINCT f.feedback) AS feedbacks,
+        GROUP_CONCAT(DISTINCT r.score) AS ratings -- Concatenar puntuaciones individuales
       FROM
         teachers t
-      LEFT JOIN
-        teacherUniversities tu ON t.id = tu.teacher_id
-      LEFT JOIN
-        universities u ON tu.university_id = u.id
-      LEFT JOIN
-        teacherSubjects ts ON t.id = ts.teacher_id
-      LEFT JOIN
-        subjects s ON ts.subject_id = s.id
-      LEFT JOIN
-        feedbacks f ON t.id = f.teacher_id
+      LEFT JOIN teacherUniversities tu ON t.id = tu.teacher_id
+      LEFT JOIN universities u ON tu.university_id = u.id
+      LEFT JOIN teacherSubjects ts ON t.id = ts.teacher_id
+      LEFT JOIN subjects s ON ts.subject_id = s.id
+      LEFT JOIN feedbacks f ON t.id = f.teacher_id
+      LEFT JOIN ratings r ON t.id = r.teacher_id
       WHERE
         t.id = ?
+      GROUP BY t.id
       `,
     args: [id],
   })
-  const teachersMap = new Map()
 
-  result.rows.forEach((row) => {
-    if (!teachersMap.has(row.id)) {
-      teachersMap.set(row.id, {
-        id: row.id,
-        rating: row.rating,
-        subjects: new Set(),
-        feedbacks: new Set(),
-        universities: new Set(),
-        teacher_name: row.teacher_name,
-      })
-    }
+  if (result.rows.length === 0) return null // Manejo si no se encuentra el profesor
 
-    const teacher = teachersMap.get(row.id)
-    if (row.feedback) teacher.feedbacks.add(row.feedback)
-    if (row.subject_name) teacher.subjects.add(row.subject_name)
-    if (row.university_name) teacher.universities.add(row.university_name)
-  })
+  const row = result.rows[0]
 
-  return Array.from(teachersMap.values()).map((teacher) => ({
-    ...teacher,
-    subjects: Array.from(teacher.subjects),
-    feedbacks: Array.from(teacher.feedbacks),
-    universities: Array.from(teacher.universities),
-  }))
+  return {
+    id: row.id,
+    teacher_name: row.teacher_name,
+    universities: row.universities ? row.universities.split(',') : [],
+    subjects: row.subjects ? row.subjects.split(',') : [],
+    feedbacks: row.feedbacks ? row.feedbacks.split(',') : [],
+    ratings: row.ratings ? row.ratings.split(',').map(Number) : [], // Convertir a array de números
+  }
 }
 
 export const createTeacher = async (name) => {

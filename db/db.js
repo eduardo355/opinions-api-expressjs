@@ -8,6 +8,31 @@ export const turso = createClient({
   authToken: process.env.TURSO_AUTH_TOKEN,
 })
 
+const create_users = `
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    google_id TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )
+`
+
+const create_ratings = `
+  CREATE TABLE IF NOT EXISTS ratings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    teacher_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    score INTEGER CHECK(score BETWEEN 1 AND 5),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE (teacher_id, user_id)
+  )
+`
+
 const create_universities = `
   CREATE TABLE IF NOT EXISTS universities (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -63,6 +88,8 @@ const create_teacher_universities = `
 
 export async function initialize_database() {
   try {
+    await turso.execute(create_users)
+    await turso.execute(create_ratings)
     await turso.execute(create_subject)
     await turso.execute(create_teachers)
     await turso.execute(create_feedbacks)
